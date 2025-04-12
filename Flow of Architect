@@ -1,0 +1,117 @@
+🧱 Step 1: Create an S3 Bucket & Upload Website
+Create an S3 bucket:
+
+Go to S3 console → Create Bucket
+
+Name: your-website-name
+
+Region: Select your preferred region
+
+Uncheck “Block all public access”
+
+Enable static website hosting under "Properties" → Provide index.html and optional error.html
+
+Upload your static site files:
+
+HTML, CSS, JS, images
+
+Set bucket policy for public read:
+
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "PublicReadGetObject",
+      "Effect": "Allow",
+      "Principal": "*",
+      "Action": "s3:GetObject",
+      "Resource": "arn:aws:s3:::your-website-name/*"
+    }
+  ]
+}
+🌐 Step 2: Set Up CloudFront Distribution
+Go to CloudFront → Create Distribution
+
+Origin Domain: Your S3 static website endpoint (e.g., your-website-name.s3-website-us-east-1.amazonaws.com)
+
+Viewer Protocol Policy: Redirect HTTP to HTTPS
+
+Default Root Object: index.html
+
+Enable:
+
+Caching
+
+Access Logging (optional)
+
+Custom Error Pages (optional)
+
+Alternate Domain Names (CNAMEs): Add your domain if using Route 53
+
+SSL Certificate:
+
+Use AWS Certificate Manager (ACM) to generate SSL for your domain
+
+Choose this certificate in CloudFront
+
+🧠 Step 3: Create Lambda@Edge Function (Optional for Custom Logic)
+Use N. Virginia (us-east-1) to create Lambda@Edge functions
+
+Example use cases:
+
+Add security headers
+
+Redirect based on country
+
+URL rewriting
+
+Example: Add Security Headers
+javascript
+
+exports.handler = async (event) => {
+  const response = event.Records[0].cf.response;
+  const headers = response.headers;
+
+  headers['strict-transport-security'] = [{ key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' }];
+  headers['content-security-policy'] = [{ key: 'Content-Security-Policy', value: "default-src 'self'" }];
+  headers['x-content-type-options'] = [{ key: 'X-Content-Type-Options', value: 'nosniff' }];
+  headers['x-frame-options'] = [{ key: 'X-Frame-Options', value: 'DENY' }];
+  headers['x-xss-protection'] = [{ key: 'X-XSS-Protection', value: '1; mode=block' }];
+
+  return response;
+};
+Deploy Lambda@Edge:
+
+Go to Lambda → Create Function
+
+Author from scratch
+
+Runtime: Node.js
+
+Permissions: Create new role with basic Lambda permissions
+
+After creation: Click “Actions” → “Deploy to Lambda@Edge” → Choose CloudFront distribution and event (e.g., origin-response)
+
+🌍 Step 4: (Optional) Route 53 Domain Setup
+Buy or use an existing domain in Route 53
+
+Create a Hosted Zone
+
+Add A or CNAME record pointing to CloudFront distribution DNS (e.g., d1234abcdef8.cloudfront.net)
+
+Ensure SSL is attached in CloudFront
+
+🔁 Step 5: Invalidation and Updates
+When updating content in S3, invalidate CloudFront cache:
+
+CloudFront → Distributions → Your Distribution → Invalidations → Create Invalidation → /*
+
+🔒 Step 6: Optional Enhancements
+🔐 Security: Use Lambda@Edge to block IPs, regions, or add WAF
+
+📊 Monitoring: Enable CloudWatch Logs and Metrics
+
+💸 Cost optimization: Enable caching, compression
+
+🚨 Backup: Use versioning in S3
+
